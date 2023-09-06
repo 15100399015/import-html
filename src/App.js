@@ -1,27 +1,21 @@
-import DocumentLoader from './DocumentLoader'
-import './App.css';
-import { useCallback, useEffect, useState } from 'react';
-
+import "./App.css";
+import { useCallback, useEffect, useState } from "react";
+import { DocumentLoader } from "./WebComponents/DocumentLoader";
 function App() {
-
-  const [tpl, setTpl] = useState()
+  const [tpl, setTpl] = useState();
 
   const fetchMainData = useCallback(async () => {
-    const tpl = await fetch('/test.html').then((res) => res.text())
-    setTpl(tpl)
-  }, [])
+    const tpl = await fetch("/test.html").then((res) => res.text());
+    setTpl(tpl);
+  }, []);
 
   useEffect(() => {
     if (!tpl) {
-      fetchMainData()
+      fetchMainData();
     }
-  }, [fetchMainData, tpl])
+  }, [fetchMainData, tpl]);
   return (
-    <div className="App" style={{
-      width: 500,
-      height: 500,
-      overflow: "auto"
-    }}>
+    <div className="App">
       <DocumentLoader code={tpl}></DocumentLoader>
     </div>
   );
