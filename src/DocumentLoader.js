@@ -1,86 +1,93 @@
+import { useEffect, useRef } from "react";
+import importHTML from "import-html-entry";
 
-import { useEffect, useRef } from 'react';
-import importHTML from 'import-html-entry'
-
-
-Element.prototype.getElementById = function (id) {
-    return this.querySelector(`#${id}`)
+function substitute(element) {
+  return new Proxy(element, {
+    get: (target, key) => {
+      const result = Reflect.get(target, key);
+      if (typeof result === "function") {
+        return result.bind(target);
+      }
+      return result;
+    },
+  });
 }
 
 export class Sandbox {
+  fakeTarget = {};
+  realTarget = {};
 
-    fakeTarget = {}
-    realTarget = window
+  box = null;
 
-    box = null
-
-    constructor(target, fake) {
-        this.realTarget = target
-        this.fakeTarget = fake
-        this.box = new Proxy(this.fakeTarget, {
-            get: (target, key) => {
-                if (Reflect.has(target, key)) return Reflect.get(target, key)
-                const result = Reflect.get(this.realTarget, key)
-                if (typeof result == 'function') {
-                    return result.bind(this.realTarget)
-                }
-                return result
-            },
-            set: (target, key, value) => {
-                return Reflect.set(target, key, value)
-            }
-        })
-    }
+  constructor(target, fake) {
+    this.realTarget = target;
+    this.fakeTarget = fake;
+    this.box = new Proxy(this.fakeTarget, {
+      get: (target, key) => {
+        if (Reflect.has(target, key)) {
+          return Reflect.get(target, key);
+        } else {
+          const result = Reflect.get(this.realTarget, key);
+          if (typeof result === "function") {
+            return result.bind(this.realTarget);
+          }
+          return result;
+        }
+      },
+      set: (target, key, value) => {
+        return Reflect.set(target, key, value);
+      },
+    });
+  }
 }
-
-
 
 const DocumentLoader = (props) => {
-    const conatiner = useRef(null)
-    const instance = useRef(true)
+  const conatiner = useRef(null);
+  const instance = useRef(true);
 
+  useEffect(() => {
+    props.code && instance.current && start();
+  }, [props.code]);
 
-    useEffect(() => {
-        props.code && instance.current && start()
-    }, [props.code])
+  const start = async () => {
+    instance.current = false;
+    const tpl = props.code;
+    importHTML("/code", {
+      fetch: (url) => {
+        if (url === "/code") {
+          return new Promise((resolve) => {
+            resolve(new Response(new Blob([tpl], { type: "text/plane" })));
+          });
+        }
+        return fetch.bind(window)(url);
+      },
+    }).then((res) => {
+      if (conatiner.current) {
+        const dom = conatiner.current;
+        const shadowRoot = dom.attachShadow({ mode: "open" });
+        shadowRoot.innerHTML = res.template;
+        const documentBox = new Sandbox(
+          substitute(document),
+          substitute(shadowRoot)
+        ).box;
+        const windowBox = new Sandbox(substitute(window), {
+          document: documentBox,
+        }).box;
+        res.execScripts(windowBox, true);
+      }
+    });
+  };
 
-    const start = async () => {
-        instance.current = false
-        const tpl = props.code
-        importHTML("/code", {
-            fetch: (url) => {
-                if (url === "/code") {
-                    return new Promise((resolve) => {
-                        resolve(new Response(new Blob([tpl], { type: "text/plane" })))
-                    })
-                }
-                return fetch.bind(window)(url)
-            },
-
-        }).then((res) => {
-            if (conatiner.current) {
-                const dom = conatiner.current
-                const shadowRoot = dom.attachShadow({ mode: "open" })
-                const wrapper = document.createElement("div")
-                shadowRoot.appendChild(wrapper);
-                wrapper.innerHTML = res.template
-                // console.log(wrapper.getElementById("chart"));
-                const sandbox = new Sandbox(window, {
-                    document: new Sandbox(document, wrapper).box
-                }).box
-                res.execScripts(sandbox, true)
-            }
-
-        })
-
-    }
-
-    return <div ref={conatiner} style={{
+  return (
+    <div
+      ref={conatiner}
+      style={{
         width: "100%",
         height: "100%",
-        overflow: "auto"
-    }}>
-    </div>
-}
+        overflow: "auto",
+      }}
+    ></div>
+  );
+};
 
-export default DocumentLoader
+export default DocumentLoader;
