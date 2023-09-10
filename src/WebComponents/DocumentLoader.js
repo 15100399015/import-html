@@ -1,13 +1,34 @@
 import importHTML from "import-html-entry";
 
-function patchElement(element, anemiDoc) {
-  const doc = Object.create(element);
+function patchElement(doc) {
   const head = document.createElement("div");
   const body = document.createElement("div");
-  element.appendChild(head);
-  element.appendChild(body);
-  Reflect.set(doc, "body", head);
-  Reflect.set(doc, "head", body);
+  head.setAttribute("data-element","head")
+  body.setAttribute("data-element","body")
+  doc.appendChild(head);
+  doc.appendChild(body);
+  Reflect.set(doc, "body", body);
+  Reflect.set(doc, "head", head);
+  const docKeys = Object.keys(Document.prototype);
+  const kes = new Set([])
+  for (let index = 0; index < docKeys.length; index++) {
+    const key = docKeys[index];
+    if (!Reflect.has(doc, key)) {
+      Object.defineProperty(doc, key, {
+        get() {
+          let value = Reflect.get(document, key);
+          kes.add(key)
+          console.log(kes);
+          if (typeof value === "function") {
+            value = value.bind(document);
+          }
+          return value;
+        },
+        enumerable: true,
+        configurable: true,
+      });
+    }
+  }
   return doc;
 }
 
@@ -110,7 +131,7 @@ class DocumentLoaderClass extends HTMLElement {
    * @param {*} tpl
    * @param {*} callback
    */
-  load(tpl, callback = () => {}) {
+  load(tpl, callback = () => { }) {
     this.loadStatus = true;
     importHTML(`/${this.cacheKey}`, {
       fetch: (url, ...args) => {
@@ -125,12 +146,10 @@ class DocumentLoaderClass extends HTMLElement {
       (res) => {
         this.loadStatus = false;
         callback(true);
-        const shadowDocument = patchElement(substitute(this.shadowRoot));
-        shadowDocument.body.innerHTML = res.template;
-        const documentBox = new Sandbox(substitute(document), shadowDocument)
-          .box;
+        patchElement(this.shadowRoot);
+        this.shadowRoot.body.innerHTML = res.template;
         const windowBox = new Sandbox(substitute(window), {
-          document: documentBox,
+          document: this.shadowRoot,
         }).box;
         res.execScripts(windowBox, true);
       },
