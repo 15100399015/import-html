@@ -1,39 +1,61 @@
-<!DOCTYPE html>
-<html>
-<head>
-	<title>Bar Chart</title>
-	<script src="https://cdn.jsdelivr.net/npm/echarts@5.2.1/dist/echarts.min.js"></script>
-</head>
-<body>
-	<div id="chart" style="width: 600px;height:400px;"></div>
-	<script>
-		var data = [{"x":"A","y":5},{"x":"B","y":8},{"x":"C","y":12},{"x":"D","y":6},{"x":"E","y":15},{"x":"F","y":10}];
-		var xData = [];
-		var yData = [];
-		for (var i = 0; i < data.length; i++) {
-			xData.push(data[i].x);
-			yData.push(data[i].y);
-		};
-		var chart = echarts.init(document.getElementById('chart'));
-		var option = {
-		    title: {
-		        text: 'Bar Chart'
-		    },
-		    tooltip: {},
-		    legend: {
-		        data:['Value']
-		    },
-		    xAxis: {
-		        data: xData
-		    },
-		    yAxis: {},
-		    series: [{
-		        name: 'Value',
-		        type: 'bar',
-		        data: yData
-		    }]
-		};
-		chart.setOption(option);
-	</script>
-</body>
-</html>
+<DOCTYPE html>
+	<html>
+	<head>
+		<title>D3.js Bar Chart</title>
+		<script src="https://d3js.org/d3.v5.min.js"></script>
+	</head>
+	<body>
+		<script>
+				console.log(d3.select("body"));
+
+			var data = [
+				{"x": "A", "y": 5},
+				{"x": "B", "y": 8},
+				{"x": "C", "y": 12},
+				{"x": "D", "y": 6},
+				{"x": "E", "y": 15},
+				{"x": "F", "y": 10}
+			];
+	
+			var margin = {top: 20, right: 20, bottom: 30, left: 40},
+				width = 600 - margin.left - margin.right,
+				height = 400 - margin.top - margin.bottom;
+	
+			var x = d3.scaleBand()
+				.range([0, width])
+				.padding(0.1);
+	
+			var y = d3.scaleLinear()
+				.range([height, 0]);
+	
+				debugger
+			var svg = d3.select("body").append("svg")
+				.attr("width", width + margin.left + margin.right)
+				.attr("height", height + margin.top + margin.bottom)
+				.append("g")
+				.attr("transform",
+					"translate(" + margin.left + "," + margin.top + ")");
+	
+			x.domain(data.map(function(d) { return d.x; }));
+			y.domain([0, d3.max(data, function(d) { return d.y; })]);
+	
+			svg.selectAll(".bar")
+				.data(data)
+				.enter().append("rect")
+				.attr("class", "bar")
+				.attr("x", function(d) { return x(d.x); })
+				.attr("width", x.bandwidth())
+				.attr("y", function(d) { return y(d.y); })
+				.attr("height", function(d) { return height - y(d.y); });
+	
+			svg.append("g")
+				.attr("transform", "translate(0," + height + ")")
+				.call(d3.axisBottom(x));
+	
+			svg.append("g")
+				.call(d3.axisLeft(y));
+		</script>
+	</body>
+	</html>
+	
+	

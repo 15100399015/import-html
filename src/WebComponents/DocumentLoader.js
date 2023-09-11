@@ -10,15 +10,12 @@ function patchElement(doc) {
   Reflect.set(doc, "body", body);
   Reflect.set(doc, "head", head);
   const docKeys = Object.keys(Document.prototype);
-  const kes = new Set([])
   for (let index = 0; index < docKeys.length; index++) {
     const key = docKeys[index];
     if (!Reflect.has(doc, key)) {
       Object.defineProperty(doc, key, {
         get() {
           let value = Reflect.get(document, key);
-          kes.add(key)
-          console.log(kes);
           if (typeof value === "function") {
             value = value.bind(document);
           }
